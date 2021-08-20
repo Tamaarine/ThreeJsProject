@@ -1,8 +1,8 @@
 import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r127/build/three.module.js';
 import {OrbitControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r127/examples/jsm/controls/OrbitControls.js';
 import {GLTFLoader} from 'https://threejsfundamentals.org/threejs/resources/threejs/r127/examples/jsm/loaders/GLTFLoader.js';
-import {FirstPersonControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r127/examples/jsm/controls/FirstPersonControls.js'
-
+import {FirstPersonControls} from './FirstPersonControls.js'
+import {DragControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r127/examples/jsm/controls/DragControls.js'
 
 const scene = new THREE.Scene()
 
@@ -12,35 +12,46 @@ const renderer = new THREE.WebGL1Renderer({
     canvas : document.querySelector('#bg'),
 })
 
-renderer.setPixelRatio( window.devicePixelRatio)
-renderer.setSize(window.innerWidth, window.innerHeight)
+const grid = new THREE.GridHelper(200, 50)
+scene.add(grid)
 
-camera.position.setZ(10)
+let torus
 
-renderer.render(scene, camera)
+function init() {
+    renderer.setClearColor(0xfffffe) // sets the entire background color
+    renderer.setPixelRatio( window.devicePixelRatio)
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    
+    camera.position.setZ(0.01) // put the camera back a little initially
+    
+    // Add the light source
+    const ambientLight = new THREE.AmbientLight(0x00ff44)
+    const lightHelper = new THREE.PointLightHelper(ambientLight)
+    scene.add(ambientLight)
+    scene.add(lightHelper)
+    
+    // Initial shape 
+    const geometry = new THREE.TorusGeometry(10, 3, 16, 100)
+    const material = new THREE.MeshStandardMaterial( {color:0xFF6347} )
+    torus = new THREE.Mesh( geometry, material )
+    torus.position.x = 100
+    scene.add(torus)
+}
 
-const geometry = new THREE.TorusGeometry(10, 3, 16, 100)
-const material = new THREE.MeshStandardMaterial( {color:0xFF6347} )
-const torus = new THREE.Mesh( geometry, material )
+const control = new OrbitControls(camera, renderer.domElement)
+// control.enableDamping = true
+// control.dampingFactor = 0.1
 
-scene.add(torus)
+control.enablePan = false;
+control.enableDamping = true;
+control.rotateSpeed = 0.30;
 
-const ambientLight = new THREE.AmbientLight(0x00ff44)
-const lightHelper = new THREE.PointLightHelper(ambientLight)
-scene.add(ambientLight)
-scene.add(lightHelper)
-
-// const control = new OrbitControls(camera, renderer.domElement)
-// const control = new FirstPersonControls( camera , renderer.domElemenet)
-// control.lookSpeed = 0.2
 // control.movementSpeed = 2
 // control.activeLook = false
 // control.enabled = false
-// scene.add(control)
 // control.lookAt(5, 2, 10)
 
-const grid = new THREE.GridHelper(200, 50)
-scene.add(grid)
+
 
 // const spaceTexture = new THREE.TextureLoader().load('space.jpg')
 // scene.background = spaceTexture
@@ -51,6 +62,7 @@ const loader = new GLTFLoader()
 
 loader.load('./littletokyo/tokyo.glb', function( object ) {
     const model = object.scene;
+    
     model.position.set( 1, 1, 0 )
     model.scale.set( 0.05, 0.05, 0.05 )
     scene.add( model )
@@ -66,20 +78,86 @@ loader.load('./littletokyo/tokyo.glb', function( object ) {
     console.log( e )
 })
 
-const clock = new THREE.Clock()
+let keycontrols = {
+    wUp: false,
+    sUp: false,
+    aUp: false,
+    dUp: false
+}
 
+document.onkeydown = function(event) {
+    if(event.keyCode == 87) {
+        keycontrols.wUp = true;
+    }
+    
+    if(event.keyCode == 83) {
+        keycontrols.sUp = true;
+    }
+    
+    if(event.keyCode == 65) {
+        keycontrols.aUp = true;
+    }
+    
+    if(event.keyCode == 68) {
+        keycontrols.dUp = true;
+    }
+    
+}
+
+document.onkeyup = function(event) {
+    if(event.keyCode == 87) {
+        keycontrols.wUp = false;
+    }
+    
+    if(event.keyCode == 83) {
+        keycontrols.sUp = false;
+    }
+    
+    if(event.keyCode == 65) {
+        keycontrols.aUp = false;
+    }
+    
+    if(event.keyCode == 68) {
+        keycontrols.dUp = false;
+    }
+}
+
+const clock = new THREE.Clock()
+const speed = 0.5
+
+init()
+
+//! Main rendering loop
 function animate() {
     requestAnimationFrame( animate )
-    
-    // torus.rotation.x += 0.01
-    torus.rotation.y += 0.01
-    torus.rotation.z -= 0.01    
     
     const delta = clock.getDelta()
     mixer.update(delta)
     
+    if(keycontrols.wUp) {
+        camera.lookAt(torus.position)
+    }
+    if(keycontrols.sUp) {
+        camera.position.y -= speed;
+    }
+    if(keycontrols.aUp) {
+        camera.position.x -= speed;
+    }
+    if(keycontrols.dUp) {
+        camera.position.x += speed;
+    }
+    
+    // if(control.target.distanceTo(control.object.position) < 2) {
+    //     control2.update(delta)
+    // }
+    // else {
+    //     control.update()
+    // }
     camera.position.x += 0.01
-    // control.update()
+    control.target.x += 0.01
+    camera.updateProjectionMatrix()
+    
+    control.update()
     
     renderer.render( scene, camera )
 }
@@ -90,3 +168,5 @@ window.onresize = function() {
     
     renderer.setSize(window.innerWidth, window.innerHeight)
 }
+
+window.addEventListener("contextmenu", e => e.preventDefault());
